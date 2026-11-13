@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Mwalimu Planner admin</title>
+<style>
+:root{--ink:#17221c;--muted:#5a665f;--bg:#eef1ea;--card:#fff;--line:#cfd6cc;--board:#17513c;--bad:#a3271c}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:1000px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+h1{font-size:1.4rem;margin:0}h2{font-size:1.1rem;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:600}
+input{font:inherit;padding:10px;border:1px solid var(--line);border-radius:7px;min-height:44px;width:100%}
+button{font:inherit;font-weight:600;padding:10px 14px;min-height:44px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer}
+button.p{background:var(--board);color:#fff;border-color:var(--board)}button.s{min-height:32px;padding:4px 8px;font-size:.8rem}
+.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.86rem}th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;white-space:nowrap}td.w{white-space:normal;min-width:220px}
+.muted{color:var(--muted);font-size:.9rem}.err{color:var(--bad);font-weight:600}.hide{display:none!important}code{font-size:1.05em;font-weight:700;letter-spacing:.08em}
+</style></head><body><main>
+<h1>Mwalimu Planner pilot admin</h1>
+<form class="card" id="gate"><h2>Admin password</h2><div class="grid"><label>Password<input id="pw" type="password" autocomplete="current-password" required></label><button class="p">Open</button></div><p class="err" id="gerr"></p></form>
+<div id="app" class="hide" style="display:flex;flex-direction:column;gap:16px">
+  <div class="card"><h2>Status</h2><p class="muted" id="stat"></p></div>
+  <form class="card" id="add"><h2>Add or update a teacher</h2><p class="muted">Adding a phone number that already exists updates that teacher. Send the teacher their phone number and code over WhatsApp.</p>
+    <div class="grid"><label>Name<input id="a-name" required></label><label>Phone<input id="a-phone" type="tel" required placeholder="0712 345 678"></label><label>School<input id="a-school"></label><label>Draft allowance<input id="a-quota" type="number" min="0" value="30"></label><button class="p">Save teacher</button></div><p id="amsg" class="muted"></p></form>
+  <div class="card"><h2>Teachers</h2><div class="scroll"><table id="tt"></table></div></div>
+  <div class="card"><h2>Feedback</h2><div class="scroll"><table id="ft"></table></div></div>
+  <div class="card"><h2>Recent drafts</h2><div class="scroll"><table id="ut"></table></div><p><button id="exp">Copy all pilot data as JSON</button> <span class="muted" id="emsg"></span></p></div>
+</div>
+</main><script>
+var pw=sessionStorage.getItem('mw_admin')||'',$=function(i){return document.getElementById(i);};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function api(p,b){return fetch('api/admin/'+p,{method:'POST',headers:{'content-type':'application/json','x-admin-password':pw},body:JSON.stringify(b||{})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw j;return j;});});}
+function d(s){return s?new Date(s).toLocaleString():'';}
+function load(){return api('state').then(function(s){
+  $('gate').classList.add('hide');$('app').classList.remove('hide');sessionStorage.setItem('mw_admin',pw);
+  $('stat').textContent='Model: '+s.model+'. API key '+(s.keySet?'is set':'is NOT set')+'. Drafts today: '+s.today+' of '+s.dailyCap+'. Teachers: '+s.teachers.length+'.';
+  $('tt').innerHTML='<tr><th>Name</th><th>Phone</th><th>Code</th><th>School</th><th>Used</th><th>Schemes</th><th>Lessons</th><th>Rewrites</th><th>Last sign-in</th><th></th></tr>'+s.teachers.map(function(t){return '<tr><td>'+esc(t.name)+(t.disabled?' (blocked)':'')+'</td><td>'+esc(t.phone)+'</td><td><code>'+esc(t.code)+'</code></td><td>'+esc(t.school)+'</td><td>'+t.used+' / '+t.quota+'</td><td>'+t.schemes+'</td><td>'+t.lessons+'</td><td>'+t.rewrites+'</td><td>'+esc(d(t.lastLogin))+'</td><td><button class="s" data-code="'+esc(t.phone)+'">New code</button> <button class="s" data-block="'+esc(t.phone)+'" data-on="'+(t.disabled?'0':'1')+'">'+(t.disabled?'Unblock':'Block')+'</button></td></tr>';}).join('');
+  var R={good:'Usable as it is',edit:'Needed some edits',bad:'Not usable'};
+  $('ft').innerHTML='<tr><th>When</th><th>Teacher</th><th>Rating</th><th>Document</th><th>Comment</th></tr>'+(s.feedback.map(function(f){return '<tr><td>'+esc(d(f.at))+'</td><td>'+esc(f.name)+'</td><td>'+esc(R[f.rating]||f.rating)+'</td><td>'+esc((f.type==='sow'?'Scheme':'Lesson')+', '+f.subject+', '+f.class+', '+f.lang)+'</td><td class="w">'+esc(f.comment)+'</td></tr>';}).join('')||'<tr><td colspan="5" class="muted">No feedback yet.</td></tr>');
+  $('ut').innerHTML='<tr><th>When</th><th>Phone</th><th>Kind</th><th>Subject</th><th>Class</th><th>Language</th><th>Lesson</th></tr>'+(s.usage.map(function(u){return '<tr><td>'+esc(d(u.at))+'</td><td>'+esc(u.phone)+'</td><td>'+esc(u.kind)+'</td><td>'+esc(u.subject)+'</td><td>'+esc(u.class)+'</td><td>'+esc(u.lang)+'</td><td class="w">'+esc(u.topic)+'</td></tr>';}).join('')||'<tr><td colspan="7" class="muted">No drafts yet.</td></tr>');
+});}
+$('gate').onsubmit=function(e){e.preventDefault();pw=$('pw').value;load().catch(function(){$('gerr').textContent='Wrong password, or ADMIN_PASSWORD is not set on the server.';});};
+$('add').onsubmit=function(e){e.preventDefault();api('teacher',{name:$('a-name').value,phone:$('a-phone').value,school:$('a-school').value,quota:$('a-quota').value}).then(function(r){$('amsg').innerHTML='Saved. Phone <b>'+esc(r.phone)+'</b>, access code <code>'+esc(r.code)+'</code>';$('a-name').value=$('a-phone').value='';load();},function(x){$('amsg').textContent=x.error==='phone'?'That phone number does not look right.':'Could not save.';});};
+$('tt').onclick=function(e){var t=e.target,p;if((p=t.getAttribute('data-code')))api('teacher',{phone:p,newCode:true}).then(load);else if((p=t.getAttribute('data-block')))api('teacher',{phone:p,disabled:t.getAttribute('data-on')==='1'}).then(load);};
+$('exp').onclick=function(){api('export').then(function(j){return navigator.clipboard.writeText(JSON.stringify(j,null,1));}).then(function(){$('emsg').textContent='Copied.';},function(){$('emsg').textContent='Could not copy.';});};
+if(pw)load().catch(function(){});
+</script></body></html>
