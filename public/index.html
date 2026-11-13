@@ -1,0 +1,220 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mwalimu Planner</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#17513c">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a chalkboard-green masthead over a single working column; forms on tinted cards, the generated document on a ruled "paper" sheet that looks like what gets printed. */
+:root{
+  --board:#17513c;        /* chalkboard green: masthead, primary buttons */
+  --board-ink:#f3f6ee;
+  --sun:#f0bd2a;          /* flag yellow: active tab, highlights */
+  --lake:#1b6699;         /* links, secondary actions */
+  --ink:#17221c;
+  --muted:#5a665f;
+  --bg:#eef1ea;
+  --card:#ffffff;
+  --paper:#ffffff;
+  --line:#cfd6cc;
+  --field:#f7f9f4;
+  --warn-bg:#fff4cf; --warn-ink:#5b4300;
+  --bad:#a3271c;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --board:#103a2b; --board-ink:#eaf1e6; --sun:#f0bd2a; --lake:#7fbfe8;
+    --ink:#e7ece6; --muted:#a3ada6; --bg:#101613; --card:#18211c; --paper:#1c2620;
+    --line:#34423a; --field:#131b17; --warn-bg:#3b3110; --warn-ink:#f4dc8a; --bad:#ff8f84;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --board:#103a2b; --board-ink:#eaf1e6; --sun:#f0bd2a; --lake:#7fbfe8;
+  --ink:#e7ece6; --muted:#a3ada6; --bg:#101613; --card:#18211c; --paper:#1c2620;
+  --line:#34423a; --field:#131b17; --warn-bg:#3b3110; --warn-ink:#f4dc8a; --bad:#ff8f84;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+a{color:var(--lake)}
+.mast{background:var(--board);color:var(--board-ink)}
+.mast-in{max-width:980px;margin:0 auto;padding:20px 16px 0}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand h1{font-size:1.7rem;letter-spacing:-.01em}
+.brand span{font-size:.95rem;opacity:.85}
+.tabs{display:flex;gap:4px;margin-top:16px;overflow-x:auto}
+.tabs a{flex:1 0 auto;text-decoration:none;color:var(--board-ink);padding:10px 14px 9px;border-radius:8px 8px 0 0;font-weight:600;font-size:.95rem;text-align:center;border-bottom:4px solid transparent;opacity:.8}
+.tabs a small{display:block;font-weight:400;font-size:.75rem;opacity:.85}
+.tabs a[aria-current="page"]{background:var(--bg);color:var(--ink);opacity:1;border-bottom-color:var(--sun)}
+main{max-width:980px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card h2{font-size:1.2rem;margin-bottom:4px}
+.sub{color:var(--muted);font-size:.9rem;margin:0 0 12px}
+details.card summary{cursor:pointer;font-weight:600}
+details.card[open] summary{margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.grid .wide{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:600}
+label i{font-style:normal;font-weight:400;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:7px;padding:10px;width:100%;min-height:44px}
+textarea{min-height:84px;resize:vertical}
+:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px;min-height:44px;cursor:pointer}
+button.primary{background:var(--board);color:var(--board-ink);border-color:var(--board)}
+button.link{border:0;background:none;color:var(--lake);padding:6px 4px;min-height:32px;text-decoration:underline}
+button:disabled{opacity:.55;cursor:not-allowed}
+.status{font-size:.9rem;color:var(--muted);min-height:1.4em}
+.status.err{color:var(--bad);font-weight:600}
+.note{background:var(--warn-bg);color:var(--warn-ink);border-radius:8px;padding:10px 12px;font-size:.9rem}
+.pill{display:inline-block;background:var(--sun);color:#2c2200;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:99px;padding:2px 9px;vertical-align:middle}
+.out{display:flex;flex-direction:column;gap:12px}
+.paper{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:18px 16px;box-shadow:0 1px 0 var(--line), 0 6px 18px rgba(0,0,0,.06)}
+.paper h3{text-align:center;font-size:1.05rem;letter-spacing:.06em;margin-bottom:12px}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:4px 18px;font-size:.92rem;margin-bottom:12px}
+.meta b{font-weight:600}
+.fld{margin:8px 0;font-size:.95rem}
+.fld b{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:4px;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{border:1px solid var(--line);padding:6px 7px;vertical-align:top;text-align:left}
+th{background:var(--field);font-size:.74rem;text-transform:uppercase;letter-spacing:.03em}
+table.sow{min-width:1180px}
+table.proc{min-width:640px}
+table.att{width:auto;min-width:280px}
+td.n,th.n{text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+[contenteditable]{border-radius:3px;white-space:pre-wrap}
+[contenteditable]:hover{background:color-mix(in srgb,var(--sun) 14%,transparent)}
+[contenteditable]:focus{outline:2px solid var(--lake);background:var(--field)}
+td.act{white-space:nowrap}
+.saved{display:flex;flex-direction:column;gap:8px}
+.saved .item{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--card)}
+.saved .item div{min-width:0}
+.saved small{color:var(--muted)}
+a.doc{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--field);text-decoration:none;color:var(--ink)}
+a.doc b{color:var(--lake);text-decoration:underline}
+a.doc small{color:var(--muted)}
+h3.grp{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-family:var(--body);margin:14px 0 8px}
+.user{font-size:.85rem;margin-top:8px;opacity:.95}
+.user button.link{color:var(--board-ink);min-height:44px}
+.hide{display:none!important}
+@media print{.mast,form,.card,footer,.note,button{display:none!important}body{background:#fff}main{padding:0;max-width:none}.paper{border:0;box-shadow:none;padding:0}.scroll{overflow:visible;border:0}table.sow,table.proc{min-width:0;font-size:9pt}}
+footer{max-width:980px;margin:0 auto;padding:4px 16px 28px;color:var(--muted);font-size:.82rem}
+@media (prefers-reduced-motion:no-preference){.busy::after{content:"";display:inline-block;width:.9em;height:.9em;margin-left:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="mast"><div class="mast-in">
+  <div class="brand"><h1>Mwalimu Planner</h1><span>Schemes of work and lesson plans in the TIE format, drafted by AI, finished by you.</span></div>
+  <div class="user" id="user"></div>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#scheme" id="tab-scheme">Scheme of work<small>Azimio la kazi</small></a>
+    <a href="#lesson" id="tab-lesson">Lesson plan<small>Andalio la somo</small></a>
+    <a href="#syllabus" id="tab-syllabus">Syllabus<small>Mihtasari</small></a>
+    <a href="#saved" id="tab-saved">My documents<small>Nyaraka zangu</small></a>
+  </nav>
+</div></div>
+
+<main>
+  <form class="card hide" id="login">
+    <h2>Sign in to the pilot</h2>
+    <p class="sub">Use the phone number and access code you received from the pilot organiser.</p>
+    <div class="grid">
+      <label>Phone number<input id="g-phone" type="tel" autocomplete="tel" required placeholder="e.g. 0712 345 678"></label>
+      <label>Access code<input id="g-code" inputmode="numeric" autocomplete="one-time-code" required placeholder="6 digits"></label>
+    </div>
+    <div class="row" style="margin-top:14px"><button class="primary" type="submit" id="g-go">Sign in</button><span class="status" id="g-status" role="status"></span></div>
+  </form>
+
+  <details class="card" id="profile">
+    <summary>Your school details <span class="sub" id="profile-sum"></span></summary>
+    <div class="grid">
+      <label>Name of school<input id="p-school" autocomplete="organization" placeholder="e.g. Mlimani Primary School"></label>
+      <label>Teacher's name<input id="p-teacher" autocomplete="name" placeholder="e.g. Mwl. Neema Mushi"></label>
+      <label>Write documents in<select id="p-lang"><option value="en">English</option><option value="sw">Kiswahili</option></select></label>
+      <label class="wide">Document format<select id="p-fmt">
+        <option value="new">2023 revised curriculum: competences, activities, four lesson stages</option>
+        <option value="old">Earlier syllabus: topics, objectives, five lesson stages</option></select>
+        <i>Choose the format your head of school and quality assurers expect for the class.</i></label>
+    </div>
+  </details>
+
+  <!-- SCHEME -->
+  <section id="view-scheme" class="out">
+    <form class="card" id="f-sow">
+      <h2>Draft a scheme of work</h2>
+      <p class="sub">One term at a time. Paste the competences or topics from your syllabus and the plan will follow them exactly.</p>
+      <div class="grid">
+        <label>Subject<select id="s-subjsel" aria-label="Subject"></select><input id="s-subject" required value="Mathematics" aria-label="Subject name" placeholder="Type the subject or learning area"></label>
+        <label>Class<select id="s-class"></select></label>
+        <label>Year<input id="s-year" type="number" min="2024" max="2040" required></label>
+        <label>Term<select id="s-term"><option value="I">Term I</option><option value="II">Term II</option></select></label>
+        <label>Starts in<select id="s-month"></select></label>
+        <label>Teaching weeks<input id="s-weeks" type="number" min="2" max="24" value="20" required></label>
+        <label>Periods per week<input id="s-ppw" type="number" min="1" max="12" value="6" required></label>
+        <label class="wide">Syllabus content for this term <i>Optional but recommended. Paste the competences, activities or topics from the TIE syllabus. <a href="#syllabus">Get the official syllabus</a></i>
+          <textarea id="s-syll" placeholder="e.g. Main competence: … Specific competences: … Activities: …"></textarea></label>
+        <label class="wide">Anything else to plan around <i>Optional. Tests, holidays, class size, missing resources.</i>
+          <input id="s-ctx" placeholder="e.g. mid-term test in week 9, 70 pupils, few textbooks"></label>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="primary" type="submit" id="s-go">Draft scheme of work</button><span class="status" id="s-status" role="status"></span></div>
+    </form>
+    <div id="s-out" class="out"></div>
+  </section>
+
+  <!-- LESSON -->
+  <section id="view-lesson" class="out hide">
+    <form class="card" id="f-lp">
+      <h2>Draft a lesson plan</h2>
+      <p class="sub">Describe one lesson. Stage times will add up to the length of your period.</p>
+      <div class="grid">
+        <label>Subject<select id="l-subjsel" aria-label="Subject"></select><input id="l-subject" required value="Mathematics" aria-label="Subject name" placeholder="Type the subject or learning area"></label>
+        <label>Class<select id="l-class"></select></label>
+        <label>Date<input id="l-date" type="date"></label>
+        <label>Period<input id="l-period" placeholder="e.g. 3rd"></label>
+        <label>Time<input id="l-time" placeholder="e.g. 9:20 - 10:00"></label>
+        <label>Length (minutes)<select id="l-dur"><option>30</option><option selected>40</option><option>60</option><option>80</option><option>120</option></select></label>
+        <label>Girls registered<input id="l-girls" type="number" min="0" inputmode="numeric"></label>
+        <label>Boys registered<input id="l-boys" type="number" min="0" inputmode="numeric"></label>
+        <label class="wide">What will pupils do or learn in this lesson?<input id="l-topic" required placeholder="e.g. Add fractions with the same denominator"></label>
+        <label class="wide">From your syllabus or scheme of work <i>Optional. Competences and activities this lesson belongs to.</i>
+          <textarea id="l-syll" placeholder="Main competence: … Specific competence: … Main activity: …"></textarea></label>
+        <label class="wide">About your class <i>Optional. Size, resources, pupils who need support.</i>
+          <input id="l-ctx" placeholder="e.g. 65 pupils, no projector, 1 textbook for every 4 pupils"></label>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="primary" type="submit" id="l-go">Draft lesson plan</button><span class="status" id="l-status" role="status"></span></div>
+    </form>
+    <div id="l-out" class="out"></div>
+  </section>
+
+  <!-- SYLLABUS -->
+  <section id="view-syllabus" class="out hide">
+    <div class="card"><h2>Official TIE syllabus downloads</h2>
+      <p class="sub">These open the Tanzania Institute of Education website, so you always get the current official document. Download the syllabus for your class, then copy the competences for the term into the planner.</p>
+      <h3 class="grp">All primary subjects</h3><div class="saved"><a class="doc" href="https://www.tie.go.tz/publications/syllabus-for-primary-education" target="_blank" rel="noopener"><b>2023 syllabuses, Standard I to VI</b><small>Every subject, English and Kiswahili versions. TIE publications page</small></a><a class="doc" href="https://www.tie.go.tz/pages/draft-of-curriculum-and-syllabus-for-primary" target="_blank" rel="noopener"><b>2023 primary curriculum and syllabus list</b><small>Mtaala na Mihtasari ya Elimu ya Msingi</small></a><a class="doc" href="https://www.tie.go.tz/pages/basic-education-syllabuses" target="_blank" rel="noopener"><b>Earlier syllabuses, Standard I to VII</b><small>For classes still on the earlier curriculum. Kiswahili-medium schools</small></a></div><h3 class="grp">Direct PDF downloads</h3><div class="saved"><a class="doc" href="https://www.tie.go.tz/uploads/documents/sw-1727177907-MUHTASARI%20SOMO%20KISWAHILI%20DRS%20III%20-%20VI.pdf" target="_blank" rel="noopener"><b>Kiswahili, Darasa la III-VI (2023)</b><small>Muhtasari wa Somo la Kiswahili. PDF</small></a><a class="doc" href="https://www.tie.go.tz/uploads/documents/sw-1727168466-ENGLISH%20Syllabus%20III-VI%20FINAL.pdf" target="_blank" rel="noopener"><b>English Language, Standard III-VI (2023)</b><small>Syllabus. PDF</small></a><a class="doc" href="https://www.tie.go.tz/uploads/documents/sw-1727175605-Muhtasari%20wa%20Somo%20la%20Sayansi%20Shule%20ya%20Msingi%20Darasa%20la%20III%20-%20VI.pdf" target="_blank" rel="noopener"><b>Sayansi, Darasa la III-VI (2023)</b><small>Muhtasari wa Somo la Sayansi. PDF</small></a><a class="doc" href="https://www.tie.go.tz/uploads/documents/sw-1724244732-MTAALA%20ELIMU%20%20YA%20MSINGI-FINAL.pdf" target="_blank" rel="noopener"><b>Mtaala wa Elimu ya Msingi, Darasa la I-VI (2023)</b><small>The primary curriculum framework. PDF</small></a><a class="doc" href="https://www.tie.go.tz/uploads/documents/sw-1724242261-MTAALA%20WA%20ELIMU%20YA%20AWALI%20FINAL.pdf" target="_blank" rel="noopener"><b>Mtaala na Muhtasari wa Elimu ya Awali (2023)</b><small>Pre-primary curriculum and syllabus. PDF</small></a></div><h3 class="grp">Secondary</h3><div class="saved"><a class="doc" href="https://www.tie.go.tz/publications/syllabus-for-lower-secondary-academics" target="_blank" rel="noopener"><b>2023 syllabuses, Form I to IV</b><small>Lower secondary, academic stream. TIE publications page</small></a></div><p class="sub" style="margin-top:12px">The syllabuses belong to the Tanzania Institute of Education. If a link stops working, TIE has moved the file: use the first link in the list.</p></div>
+  </section>
+
+  <!-- SAVED -->
+  <section id="view-saved" class="out hide">
+    <div class="card"><h2>My documents</h2><p class="sub">Kept on this phone or computer only. Download the Word file for anything you need to keep.</p>
+      <div class="saved" id="saved-list"></div></div>
+  </section>
+</main>
+<footer>AI drafts can contain mistakes. Check every competence, activity and reference against the official TIE syllabus before you submit a document.</footer>
+
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
